@@ -3,11 +3,12 @@ import {
     createOrder,
     
     getAllOrders,
-    getOrderById,
+   
     updateOrder,
     deleteOrder,
     getOrdersByPartner,
-    getOrdersByCustomer
+    getOrdersByCustomer,
+    getOrderByUserId
 } from '../controllers/controllers.orders';
 import { protectRoute } from '../utils/middleware.utils';
 
@@ -23,7 +24,7 @@ router.post('/create',protectRoute, createOrder);
 router.get('/', getAllOrders);
 
 // Route to get a single order by ID
-router.get('/:orderId', getOrderById);
+router.get('/:customerId', getOrdersByCustomer);
 
 // Route to update an order by ID
 router.put('/:orderId', updateOrder);

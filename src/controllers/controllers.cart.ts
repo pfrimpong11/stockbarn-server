@@ -1,7 +1,5 @@
 
 import { Request, Response } from 'express';
-
-
 import { connectToDatabase } from '../database';
 import Product from '../database/models/models.product';
 import Cart from '../database/models/models.cart';

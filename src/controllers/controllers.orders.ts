@@ -5,8 +5,10 @@ import Order from '../database/models/models.order';
 import Location from '../database/models/models.location';
 import User from '../database/models/models.customer';
 import Product from '../database/models/models.product';
+import Cart from '../database/models/models.cart';
 
 const PAYSTACK_SECRET_KEY = "sk_live_b656166f9c8b4216425d78a0ef4c49a390d84cbd";
+
 
 export const createOrder = async (req: any, res: Response) => {
     const { products, paymentMethod, pickuplocationCategory, deliverylocationCategory, deliveryTime, pickupTime } = req.body;
@@ -22,7 +24,7 @@ export const createOrder = async (req: any, res: Response) => {
         // Find pickup location
         const location1 = await Location.findOne({
             category: pickuplocationCategory,
-            user: customer._id, // Ensure the location belongs to the user
+            user: customer._id,
         });
 
         if (!location1) {
@@ -32,7 +34,7 @@ export const createOrder = async (req: any, res: Response) => {
         // Find delivery location
         const location2 = await Location.findOne({
             category: deliverylocationCategory,
-            user: customer._id, // Ensure the location belongs to the user
+            user: customer._id,
         });
 
         if (!location2) {
@@ -56,7 +58,7 @@ export const createOrder = async (req: any, res: Response) => {
             totalAmount += product.price * item.quantity;
             populatedProducts.push({
                 product: product._id,
-                service: product.service.name, // Ensure service has `name`
+                service: product.service.name,
                 quantity: item.quantity,
             });
         }
@@ -78,14 +80,13 @@ export const createOrder = async (req: any, res: Response) => {
 
         // Handle payment based on payment method
         if (paymentMethod === 'card') {
-            // Proceed with Paystack payment
             const parseTotal = parseFloat(totalAmount.toFixed(2));
 
             const paymentResponse = await axios.post(
                 'https://api.paystack.co/transaction/initialize',
                 {
-                    email: customer.email, // Assuming customer object has an email field
-                    amount: Math.round(parseTotal * 100), // amount in Kobo
+                    email: customer.email,
+                    amount: Math.round(parseTotal * 100),
                     metadata: {
                         orderId: newOrder._id,
                     },
@@ -98,12 +99,25 @@ export const createOrder = async (req: any, res: Response) => {
                 }
             );
 
+            // Clear the cart
+            await Cart.findOneAndUpdate(
+                { user: customer._id },
+                { $set: { items: [], totalAmount: 0 } },
+                { new: true }
+            );
+
             return res.status(201).send({
                 order: newOrder,
                 paymentUrl: paymentResponse.data.data.authorization_url,
             });
         } else if (paymentMethod === 'payOnDelivery') {
-            // Skip payment processing for Pay on Delivery
+            // Clear the cart
+            await Cart.findOneAndUpdate(
+                { user: customer._id },
+                { $set: { items: [], totalAmount: 0 } },
+                { new: true }
+            );
+
             return res.status(201).send({
                 order: newOrder,
                 message: 'Order created successfully. Payment will be made on delivery.',
@@ -119,7 +133,6 @@ export const createOrder = async (req: any, res: Response) => {
 
 
 
-
 export const getAllOrders = async (req: Request, res: Response) => {
     try {
         await connectToDatabase();
@@ -131,12 +144,12 @@ export const getAllOrders = async (req: Request, res: Response) => {
 };
 
 
-export const getOrderById = async (req: Request, res: Response) => {
-    const { orderId } = req.params;
+export const getOrderByUserId = async (req: Request, res: Response) => {
+    const { userId } = req.params;
 
     try {
         await connectToDatabase();
-        const order = await Order.findById(orderId).populate('customer partner products.product location');
+        const order = await Order.findById(userId)
         if (!order) {
             return res.status(404).send({ msg: 'Order not found' });
         }
