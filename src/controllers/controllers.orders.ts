@@ -11,7 +11,7 @@ const PAYSTACK_SECRET_KEY = "sk_live_b656166f9c8b4216425d78a0ef4c49a390d84cbd";
 
 
 export const createOrder = async (req: any, res: Response) => {
-    const { products, paymentMethod, pickuplocationCategory, deliverylocationCategory, deliveryTime, pickupTime } = req.body;
+    const { paymentMethod, pickuplocationCategory, deliverylocationCategory, deliveryTime, pickupTime } = req.body;
     const customer = req.user;
 
     try {
@@ -41,27 +41,27 @@ export const createOrder = async (req: any, res: Response) => {
             return res.status(404).send({ msg: `Delivery location with category '${deliverylocationCategory}' not found` });
         }
 
-        // Calculate the total amount for the order and populate service in products
-        let totalAmount: number = 0;
-        const populatedProducts = [];
+        // Fetch cart for the user
+        const cart = await Cart.findOne({ user: customer._id }).populate('items.product');
 
-        for (const item of products) {
-            const product = await Product.findById(item.product).populate('service');
-            if (!product) {
-                return res.status(404).send({ msg: `Product with ID ${item.product} not found` });
-            }
-
-            if (!product.service) {
-                return res.status(400).send({ msg: `Product service for product ID ${item.product} is missing` });
-            }
-
-            totalAmount += product.price * item.quantity;
-            populatedProducts.push({
-                product: product._id,
-                service: product.service.name,
-                quantity: item.quantity,
-            });
+        if (!cart || cart.items.length === 0) {
+            return res.status(400).send({ msg: "Cart is empty" });
         }
+
+        // Calculate the total amount and prepare populated products
+        let totalAmount: number = 0;
+        const populatedProducts = cart.items.map(item => {
+            const product = item.product;
+            if (!product) {
+                throw new Error(`Product with ID ${item.product} not found`);
+            }
+            totalAmount += product.price * item.quantity;
+            return {
+                product: product._id,
+                service: product.service.name, // Assuming the service field is populated
+                quantity: item.quantity,
+            };
+        });
 
         // Create the order object
         const newOrder = new Order({
@@ -78,10 +78,16 @@ export const createOrder = async (req: any, res: Response) => {
         // Save the order to the database
         await newOrder.save();
 
-        // Handle payment based on payment method
+        // Clear the cart
+        await Cart.findOneAndUpdate(
+            { user: customer._id },
+            { $set: { items: [], totalAmount: 0 } },
+            { new: true }
+        );
+
+        // Handle payment
         if (paymentMethod === 'card') {
             const parseTotal = parseFloat(totalAmount.toFixed(2));
-
             const paymentResponse = await axios.post(
                 'https://api.paystack.co/transaction/initialize',
                 {
@@ -99,25 +105,11 @@ export const createOrder = async (req: any, res: Response) => {
                 }
             );
 
-            // Clear the cart
-            await Cart.findOneAndUpdate(
-                { user: customer._id },
-                { $set: { items: [], totalAmount: 0 } },
-                { new: true }
-            );
-
             return res.status(201).send({
                 order: newOrder,
                 paymentUrl: paymentResponse.data.data.authorization_url,
             });
         } else if (paymentMethod === 'payOnDelivery') {
-            // Clear the cart
-            await Cart.findOneAndUpdate(
-                { user: customer._id },
-                { $set: { items: [], totalAmount: 0 } },
-                { new: true }
-            );
-
             return res.status(201).send({
                 order: newOrder,
                 message: 'Order created successfully. Payment will be made on delivery.',
@@ -127,7 +119,7 @@ export const createOrder = async (req: any, res: Response) => {
         }
     } catch (error) {
         console.error('Error creating order:', error);
-        return res.status(500).send({ msg: 'Error creating order', error });
+        return res.status(500).send({ msg: 'Error creating order', error: error.message });
     }
 };
 
@@ -217,7 +209,9 @@ export const getOrdersByCustomer = async (req: Request, res: Response) => {
 
     try {
         await connectToDatabase();
-        const orders = await Order.find({ customer: customerId })
+        const orders = await Order.find({ customer: customerId }).populate('deliverylocation')
+            .populate('pickuplocation')
+            .populate('products.product')
            
 
         if (!orders.length) {
