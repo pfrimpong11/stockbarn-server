@@ -56,9 +56,11 @@ export const createOrder = async (req: any, res: Response) => {
                 throw new Error(`Product with ID ${item.product} not found`);
             }
             totalAmount += product.price * item.quantity;
+            console.log(product);
+            
             return {
                 product: product._id,
-                service: product.service.name, // Assuming the service field is populated
+                service: product.service, // Assuming the service field is populated
                 quantity: item.quantity,
             };
         });
@@ -141,7 +143,8 @@ export const getOrderByUserId = async (req: Request, res: Response) => {
 
     try {
         await connectToDatabase();
-        const order = await Order.findById(userId)
+        const order = await Order.findById(userId).populate("products.product")
+        .populate("products.service")
         if (!order) {
             return res.status(404).send({ msg: 'Order not found' });
         }
@@ -212,9 +215,10 @@ export const getOrdersByCustomer = async (req: Request, res: Response) => {
         const orders = await Order.find({ customer: customerId }).populate('deliverylocation')
             .populate('pickuplocation')
             .populate('products.product')
+        .populate('products.service')
            
 
-        if (!orders.length) {
+        if (!orders) {
             return res.status(404).send({ msg: 'No orders found for this customer' });
         }
 

@@ -24,7 +24,7 @@ router.post('/create',protectRoute, createOrder);
 router.get('/', getAllOrders);
 
 // Route to get a single order by ID
-router.get('/:customerId', getOrdersByCustomer);
+// router.get('/:customerId', getOrdersByCustomer);
 
 // Route to update an order by ID
 router.put('/:orderId', updateOrder);

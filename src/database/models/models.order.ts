@@ -7,7 +7,7 @@ const orderSchema = new Schema({
     products: [{
         product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
         quantity: { type: Number, required: true },
-        service: { type: String, required: true }
+        service: { type: Schema.Types.ObjectId, ref: 'Service', required: true }
     }],
     totalAmount: { type: Number, required: true },
     status: { 
