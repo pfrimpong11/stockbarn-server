@@ -1,18 +1,22 @@
-import { Schema, Types, model, models } from "mongoose";
+import mongoose, { Schema, Document } from 'mongoose';
 
-const productSchema = new Schema({
-    name: { type: String, required: true },
-    description: { type: String, required: true },
-    service: {
-        type: Schema.Types.ObjectId,
-        ref: 'Service'
-    },
-    productType: { type: String, enum: ['man', 'woman', 'kids', 'others'], required: true },
-    price: { type: Number, required: true },
-    imageUrl: { type: String },
-    available: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
+interface Product extends Document {
+  name: string;
+  price: number;
+  images: string[];
+  unit: string;
+  category: string;
+  description: string;
+  nutrition: string; // Changed to string
+}
+
+const ProductSchema = new Schema<Product>({
+  name: { type: String, required: true, trim: true },
+  price: { type: Number, required: true, min: 0 },
+  images: { type: [String], required: true },
+  category: { type: String, required: true, trim: true },
+  description: { type: String, required: true, trim: true },
+  nutrition: { type: String, required: false }, 
 });
-const Product = models.Product || model("Product", productSchema);
-export default Product;
+
+export default mongoose.model<Product>('Products', ProductSchema);

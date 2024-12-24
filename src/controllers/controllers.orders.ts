@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { connectToDatabase } from '../database';
 import axios from 'axios';
 import Order from '../database/models/models.order';
-import Location from '../database/models/models.location';
+
 import User from '../database/models/models.customer';
 import Product from '../database/models/models.product';
 import Cart from '../database/models/models.cart';
@@ -11,92 +11,64 @@ const PAYSTACK_SECRET_KEY = "sk_live_b656166f9c8b4216425d78a0ef4c49a390d84cbd";
 
 
 export const createOrder = async (req: any, res: Response) => {
-    const { paymentMethod, pickuplocationCategory, deliverylocationCategory, deliveryTime, pickupTime } = req.body;
+    const { products, email, contactNumber,paymentMethod, deliverylocation } = req.body;
     const customer = req.user;
 
     try {
         if (!customer || !customer._id) {
-            return res.status(400).send({ msg: "User information is missing or invalid" });
+            return res.status(400).send({ msg: 'User information is missing or invalid.' });
+        }
+
+        if (!products || products.length === 0) {
+            return res.status(400).send({ msg: 'Products array cannot be empty.' });
+        }
+
+        if (!email || !contactNumber) {
+            return res.status(400).send({ msg: 'Email and contact number are required.' });
         }
 
         await connectToDatabase();
 
-        // Find pickup location
-        const location1 = await Location.findOne({
-            category: pickuplocationCategory,
-            user: customer._id,
-        });
+        // Fetch pickup and delivery locations
+       
 
-        if (!location1) {
-            return res.status(404).send({ msg: `Pickup location with category '${pickuplocationCategory}' not found` });
-        }
-
-        // Find delivery location
-        const location2 = await Location.findOne({
-            category: deliverylocationCategory,
-            user: customer._id,
-        });
-
-        if (!location2) {
-            return res.status(404).send({ msg: `Delivery location with category '${deliverylocationCategory}' not found` });
-        }
-
-        // Fetch cart for the user
-        const cart = await Cart.findOne({ user: customer._id }).populate('items.product');
-
-        if (!cart || cart.items.length === 0) {
-            return res.status(400).send({ msg: "Cart is empty" });
-        }
-
-        // Calculate the total amount and prepare populated products
-        let totalAmount: number = 0;
-        const populatedProducts = cart.items.map(item => {
-            const product = item.product;
-            if (!product) {
-                throw new Error(`Product with ID ${item.product} not found`);
+        // Calculate total amount
+        let totalAmount = 0;
+        const orderProducts = products.map((product: any) => {
+            if (!product.product || !product.quantity || product.quantity <= 0) {
+                throw new Error('Each product must include a valid product ID and a positive quantity.');
             }
-            totalAmount += product.price * item.quantity;
-            console.log(product);
-            
+            totalAmount += product.price * product.quantity;
             return {
-                product: product._id,
-                service: product.service, // Assuming the service field is populated
-                quantity: item.quantity,
+                product: product.product,
+                quantity: product.quantity,
             };
         });
 
-        // Create the order object
+        // Create the order
         const newOrder = new Order({
             customer: customer._id,
-            products: populatedProducts,
+            products: orderProducts,
             totalAmount,
-            paymentMethod,
-            pickuplocation: location1._id,
-            deliverylocation: location2._id,
-            deliveryTime,
-            pickupTime,
+            status: 'pending',
+            paymentStatus: 'unpaid',
+            deliverylocation
+            
         });
 
-        // Save the order to the database
         await newOrder.save();
 
-        // Clear the cart
-        await Cart.findOneAndUpdate(
-            { user: customer._id },
-            { $set: { items: [], totalAmount: 0 } },
-            { new: true }
-        );
-
-        // Handle payment
+        // Handle payment integration with Paystack
         if (paymentMethod === 'card') {
             const parseTotal = parseFloat(totalAmount.toFixed(2));
             const paymentResponse = await axios.post(
                 'https://api.paystack.co/transaction/initialize',
                 {
-                    email: customer.email,
+                    email,
                     amount: Math.round(parseTotal * 100),
                     metadata: {
                         orderId: newOrder._id,
+                        contactNumber,
                     },
                     channels: ['card', 'mobile_money'],
                 },
@@ -117,13 +89,14 @@ export const createOrder = async (req: any, res: Response) => {
                 message: 'Order created successfully. Payment will be made on delivery.',
             });
         } else {
-            return res.status(400).send({ msg: 'Invalid payment method' });
+            return res.status(400).send({ msg: 'Invalid payment method.' });
         }
     } catch (error) {
         console.error('Error creating order:', error);
-        return res.status(500).send({ msg: 'Error creating order', error: error.message });
+        return res.status(500).send({ msg: 'Error creating order.', error: error.message });
     }
 };
+
 
 
 
@@ -138,13 +111,13 @@ export const getAllOrders = async (req: Request, res: Response) => {
 };
 
 
-export const getOrderByUserId = async (req: Request, res: Response) => {
+export const getOrdersByUserId = async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     try {
         await connectToDatabase();
-        const order = await Order.findById(userId).populate("products.product")
-        .populate("products.service")
+        const order = await Order.find({ userId }).populate("products.product")
+        
         if (!order) {
             return res.status(404).send({ msg: 'Order not found' });
         }
@@ -187,26 +160,6 @@ export const deleteOrder = async (req: Request, res: Response) => {
     }
 };
 
-
-export const getOrdersByPartner = async (req: Request, res: Response) => {
-    const { partnerId } = req.params;
-
-    try {
-        await connectToDatabase();
-        const orders = await Order.find({ partner: partnerId })
-            
-
-        if (!orders.length) {
-            return res.status(404).send({ msg: 'No orders found for this partner' });
-        }
-
-        return res.status(200).send(orders);
-    } catch (error) {
-        return res.status(500).send({ msg: 'Error fetching orders by partner', error });
-    }
-};
-
-
 export const getOrdersByCustomer = async (req: Request, res: Response) => {
     const { customerId } = req.params;
 
@@ -227,4 +180,24 @@ export const getOrdersByCustomer = async (req: Request, res: Response) => {
         return res.status(500).send({ msg: 'Error fetching orders by customer', error });
     }
 };
+
+export const getOrdersByPartner = async (req: Request, res: Response) => {
+    const { partnerId } = req.params;
+
+    try {
+        await connectToDatabase();
+        const orders = await Order.find({ partner: partnerId })
+            
+
+        if (!orders.length) {
+            return res.status(404).send({ msg: 'No orders found for this partner' });
+        }
+
+        return res.status(200).send(orders);
+    } catch (error) {
+        return res.status(500).send({ msg: 'Error fetching orders by partner', error });
+    }
+};
+
+
 

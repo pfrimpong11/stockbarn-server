@@ -3,13 +3,10 @@ import cors from "cors";
 import "dotenv/config";
 import mongoose from "mongoose"; // Import mongoose for database connection
 import authRoutes from "./routes/routes.auth";
-import services from "./routes/route.services";
-import vendorRoutes from './routes/route.vendor';
-import admin from "./routes/admin/route.admin";
 import cart from "./routes/route.cart";
-import partner from "./routes/partner/route.partner";
+
 import productRoutes from './routes/route.product';
-import locationRoutes from "./routes/route.location";
+
 import ordersRoutes from "./routes/route.orders";
 
 const PORT = 3002;
@@ -29,14 +26,10 @@ const corsOptions = {
 app.use(cors());
 
 app.use("/api/auth", authRoutes);
-app.use("/api/services", services);
-app.use("/api/admin", admin);
-app.use("/api/vendor", vendorRoutes);
 app.use("/api/product", productRoutes);
-app.use("/api/location", locationRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/cart", cart);
-app.use("/api/partner", partner);
+
 // Function to connect to the database and start the server
 const startServer = async () => {
     try {

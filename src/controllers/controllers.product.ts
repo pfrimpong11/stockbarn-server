@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 
 import { connectToDatabase } from '../database';
 import Product from '../database/models/models.product';
+import Order from '../database/models/models.order';
+import User from '../database/models/models.customer';
 
 // Create a new product
 export const createProduct = async (req: any, res: Response) => {
@@ -29,6 +31,49 @@ export const createProduct = async (req: any, res: Response) => {
     }
 };
 
+
+export const getDashboardStats = async (req: Request, res: Response) => {
+    try {
+        
+        await connectToDatabase();
+
+        // Calculate total revenue
+        const revenueData = await Order.aggregate([
+            {
+                $match: { paymentStatus: "paid" }, 
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: "$totalAmount" },
+                },
+            },
+        ]);
+
+        const totalRevenue = revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
+
+       
+        const totalCustomers = await User.countDocuments();
+        const totalOrders = await Order.countDocuments();
+        const totalProducts = await Product.countDocuments();
+
+       
+        return res.status(200).send({
+            totalRevenue,
+            totalCustomers,
+            totalOrders,
+            totalProducts,
+        });
+    } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        return res.status(500).send({
+            msg: "Error fetching dashboard stats",
+            error: error.message,
+        });
+    }
+};
+
+
 // Fetch all products
 export const getAllProducts = async (req: Request, res: Response) => {
     try {
@@ -42,20 +87,6 @@ export const getAllProducts = async (req: Request, res: Response) => {
     }
 };
 
-// Fetch products by service
-export const getProductsByService = async (req: Request, res: Response) => {
-    const { serviceId } = req.params;
-
-    try {
-        await connectToDatabase();
-
-        const products = await Product.find({ service: serviceId }).populate('service')
-
-        return res.status(200).send(products);
-    } catch (error) {
-        return res.status(500).send({ msg: 'Error fetching products by service', error });
-    }
-};
 
 // Fetch product by ID
 export const getProductById = async (req: Request, res: Response) => {
