@@ -7,8 +7,7 @@ import User from '../database/models/models.customer';
 
 // Create a new product
 export const createProduct = async (req: any, res: Response) => {
-    const { name, description, service, productType, price, imageUrl } =await req.body;
-     // Assuming this is set by middleware
+    const { name, description, price, unit, category, images, nutrition } = req.body;
 
     try {
         await connectToDatabase();
@@ -16,11 +15,11 @@ export const createProduct = async (req: any, res: Response) => {
         const newProduct = new Product({
             name,
             description,
-            service,
-            productType,
             price,
-            imageUrl,
-          
+            unit,
+            category,
+            images,
+            nutrition,
         });
 
         const savedProduct = await newProduct.save();
@@ -30,6 +29,7 @@ export const createProduct = async (req: any, res: Response) => {
         return res.status(500).send({ msg: 'Error creating product', error });
     }
 };
+
 
 
 export const getDashboardStats = async (req: Request, res: Response) => {
@@ -79,13 +79,14 @@ export const getAllProducts = async (req: Request, res: Response) => {
     try {
         await connectToDatabase();
 
-        const products = await Product.find().populate('service');
+        const products = await Product.find();
 
         return res.status(200).send(products);
     } catch (error) {
         return res.status(500).send({ msg: 'Error fetching products', error });
     }
 };
+
 
 
 // Fetch product by ID
@@ -95,7 +96,7 @@ export const getProductById = async (req: Request, res: Response) => {
     try {
         await connectToDatabase();
 
-        const product = await Product.findById(productId).populate('service')
+        const product = await Product.findById(productId);
 
         if (!product) {
             return res.status(404).send({ msg: 'Product not found' });
@@ -107,6 +108,7 @@ export const getProductById = async (req: Request, res: Response) => {
     }
 };
 
+
 // Update product
 export const updateProduct = async (req: Request, res: Response) => {
     const { productId } = req.params;
@@ -115,7 +117,7 @@ export const updateProduct = async (req: Request, res: Response) => {
     try {
         await connectToDatabase();
 
-        const updatedProduct = await Product.findByIdAndUpdate(productId, updates, { new: true }).populate('service').populate('createdBy');
+        const updatedProduct = await Product.findByIdAndUpdate(productId, updates, { new: true });
 
         if (!updatedProduct) {
             return res.status(404).send({ msg: 'Product not found' });
@@ -126,6 +128,7 @@ export const updateProduct = async (req: Request, res: Response) => {
         return res.status(500).send({ msg: 'Error updating product', error });
     }
 };
+
 
 // Delete product
 export const deleteProduct = async (req: Request, res: Response) => {
