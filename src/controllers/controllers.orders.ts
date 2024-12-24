@@ -15,9 +15,9 @@ export const createOrder = async (req: any, res: Response) => {
     const customer = req.user;
 
     try {
-        if (!customer || !customer._id) {
-            return res.status(400).send({ msg: 'User information is missing or invalid.' });
-        }
+        // if (!customer || !customer._id) {
+        //     return res.status(400).send({ msg: 'User information is missing or invalid.' });
+        // }
 
         if (!products || products.length === 0) {
             return res.status(400).send({ msg: 'Products array cannot be empty.' });
@@ -27,7 +27,7 @@ export const createOrder = async (req: any, res: Response) => {
             return res.status(400).send({ msg: 'Email and contact number are required.' });
         }
 
-        await connectToDatabase();
+       
 
         // Fetch pickup and delivery locations
        
@@ -35,12 +35,12 @@ export const createOrder = async (req: any, res: Response) => {
         // Calculate total amount
         let totalAmount = 0;
         const orderProducts = products.map((product: any) => {
-            if (!product.product || !product.quantity || product.quantity <= 0) {
+            if (  !product.quantity || product.quantity <= 0) {
                 throw new Error('Each product must include a valid product ID and a positive quantity.');
             }
             totalAmount += product.price * product.quantity;
             return {
-                product: product.product,
+                product: product.name,
                 quantity: product.quantity,
             };
         });
@@ -102,7 +102,7 @@ export const createOrder = async (req: any, res: Response) => {
 
 export const getAllOrders = async (req: Request, res: Response) => {
     try {
-        await connectToDatabase();
+        
         const orders = await Order.find().populate("products.product");
         return res.status(200).send(orders);
     } catch (error) {
@@ -115,7 +115,7 @@ export const getOrdersByUserId = async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     try {
-        await connectToDatabase();
+        
         const order = await Order.find({ userId }).populate("products.product")
         
         if (!order) {
@@ -164,11 +164,8 @@ export const getOrdersByCustomer = async (req: Request, res: Response) => {
     const { customerId } = req.params;
 
     try {
-        await connectToDatabase();
-        const orders = await Order.find({ customer: customerId }).populate('deliverylocation')
-            .populate('pickuplocation')
-            .populate('products.product')
-        .populate('products.service')
+        const orders = await Order.find({ customer: customerId })
+           
            
 
         if (!orders) {

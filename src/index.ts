@@ -10,7 +10,7 @@ import productRoutes from './routes/route.product';
 import ordersRoutes from "./routes/route.orders";
 
 const PORT = 3002;
-const MONGODB_URI = "mongodb+srv://simonadjei70:QzlvSvnAxDMGaozU@cluster0.cgdpa.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+const MONGODB_URI = "mongodb+srv://simonadjei70:stock@cluster0.pk2w3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 const app = express();
 
@@ -35,7 +35,7 @@ const startServer = async () => {
     try {
         // Replace `process.env.MONGODB_URI` with your actual MongoDB connection string
         await mongoose.connect(MONGODB_URI, {
-           dbName:'laundry'
+           dbName:'stoack'
         });
         console.log("Connected to the database");
 

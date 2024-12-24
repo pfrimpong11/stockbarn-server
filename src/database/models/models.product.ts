@@ -15,7 +15,7 @@ const ProductSchema = new Schema<Product>({
   price: { type: Number, required: true, min: 0 },
   images: { type: [String], required: true },
   category: { type: String, required: true, trim: true },
-  description: { type: String, required: true, trim: true },
+  description: { type: String, required: false, trim: true },
   nutrition: { type: String, required: false }, 
 });
 

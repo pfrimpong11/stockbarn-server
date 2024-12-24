@@ -10,7 +10,7 @@ export const createProduct = async (req: any, res: Response) => {
     const { name, description, price, unit, category, images, nutrition } = req.body;
 
     try {
-        await connectToDatabase();
+        
 
         const newProduct = new Product({
             name,
@@ -35,7 +35,7 @@ export const createProduct = async (req: any, res: Response) => {
 export const getDashboardStats = async (req: Request, res: Response) => {
     try {
         
-        await connectToDatabase();
+        
 
         // Calculate total revenue
         const revenueData = await Order.aggregate([
@@ -77,7 +77,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 // Fetch all products
 export const getAllProducts = async (req: Request, res: Response) => {
     try {
-        await connectToDatabase();
+       
 
         const products = await Product.find();
 
@@ -94,7 +94,7 @@ export const getProductById = async (req: Request, res: Response) => {
     const { productId } = req.params;
 
     try {
-        await connectToDatabase();
+      
 
         const product = await Product.findById(productId);
 
@@ -115,7 +115,7 @@ export const updateProduct = async (req: Request, res: Response) => {
     const updates = req.body;
 
     try {
-        await connectToDatabase();
+   
 
         const updatedProduct = await Product.findByIdAndUpdate(productId, updates, { new: true });
 
@@ -135,7 +135,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
     const { productId } = req.params;
 
     try {
-        await connectToDatabase();
+     
 
         const deletedProduct = await Product.findByIdAndDelete(productId);
 

@@ -345,7 +345,23 @@ export const getProfile = async (req:any, res:Response) => {
       console.error('Error fetching customer profile:', error);
       res.status(500).json({ message: 'Server error' });
     }
-  };
+};
+export const getUsers = async (req: any, res: Response) => {
+  try {
+    // Log the authenticated user details if middleware sets them
+    console.log("Authenticated user:", req.user);
+    console.log("User role:", req.role);
+
+    // Fetch all users from the database
+    const users = await User.find();
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
   
   export const updateProfile = async (req: any, res: Response) => {
     try {

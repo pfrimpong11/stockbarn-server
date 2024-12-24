@@ -13,7 +13,7 @@ import {
 import { protectRoute } from '../utils/middleware.utils';
 
 const router = express.Router();
-router.post('/create',protectRoute, createOrder);
+router.post('/create', createOrder);
 router.get('/', getAllOrders);
 router.put('/:orderId', updateOrder);
 router.delete('/:orderId', deleteOrder);
